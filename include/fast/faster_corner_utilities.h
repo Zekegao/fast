@@ -57,6 +57,22 @@ struct Greater
 
 #endif
 
+#if __ARM_NEON__
+
+#define CHECK_BARRIER(lo, hi, other, flags)     \
+  {   \
+    uint8x16_t diff = vqsubq_u8(lo, other);     \
+    uint8x16_t diff2 = vqsubq_u8(other, hi);    \
+    uint8x16_t z = vdupq_n_u8(0);      \
+    diff = vceqq_s8(diff, z);          \
+    diff2 = vceqq_s8(diff2, z);        \
+    flags = ~()
+
+
+  }
+#endif
+
+
 } // namespace fast
 
 #endif
