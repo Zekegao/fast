@@ -29,8 +29,10 @@ void fast_corner_score_10(const fast_byte* img, const int img_stride, const vect
 void fast_nonmax_3x3(const vector<fast_xy>& corners, const vector<int>& scores, vector<int>& nonmax_corners);
 
 /// NEON optimized version of the corner 9
-void fast_corner_detect_9_neon(const fast_byte* img, int imgWidth, int imgHeight, int widthStep, short barrier, vector<fast_xy>& corners);     
+void fast_corner_detect_9_neon(const fast_byte* img, int imgWidth, int imgHeight, int widthStep, short barrier, vector<fast_xy>& corners);
 
+/// NEON optimized version of the corner 10
+void fast_corner_detect_10_neon(const fast_byte* img, int imgWidth, int imgHeight, int widthStep, short barrier, vector<fast_xy>& corners);
 } // namespace fast
 
 #endif

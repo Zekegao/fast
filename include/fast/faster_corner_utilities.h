@@ -59,17 +59,47 @@ struct Greater
 
 #if __ARM_NEON__
 
+
 #define CHECK_BARRIER(lo, hi, other, flags)     \
   {   \
     uint8x16_t diff = vqsubq_u8(lo, other);     \
     uint8x16_t diff2 = vqsubq_u8(other, hi);    \
     uint8x16_t z = vdupq_n_u8(0);      \
-    diff = vceqq_s8(diff, z);          \
-    diff2 = vceqq_s8(diff2, z);        \
-    flags = ~()
-
-
+    diff = vceqq_u8(diff, z);          \
+    diff2 = vceqq_u8(diff2, z);        \
+    flags = ~(_mm_movemask_epi8_neon(diff) | (_mm_movemask_epi8_neon(diff2) << 16)); \
   }
+
+ int32_t _mm_movemask_epi8_neon(uint8x16_t input)
+  {
+    const int8_t __attribute__ ((aligned (16))) xr[8] = {-7,-6,-5,-4,-3,-2,-1,0};
+    uint8x8_t mask_and = vdup_n_u8(0x80);
+    int8x8_t mask_shift = vld1_s8(xr);
+
+    uint8x8_t lo = vget_low_u8(input);
+    uint8x8_t hi = vget_high_u8(input);
+
+    lo = vand_u8(lo, mask_and);
+    lo = vshl_u8(lo, mask_shift);
+
+    hi = vand_u8(hi, mask_and);
+    hi = vshl_u8(hi, mask_shift);
+
+    lo = vpadd_u8(lo,lo);
+    lo = vpadd_u8(lo,lo);
+    lo = vpadd_u8(lo,lo);
+
+    hi = vpadd_u8(hi,hi);
+    hi = vpadd_u8(hi,hi);
+
+    hi = vpadd_u8(hi,hi);
+
+    return ((hi[0] << 8) | (lo[0] & 0xFF));
+  }
+
+  template <bool Aligned> inline uint8x16_t neon_load_si128(const void* addr) { return vld1q_u8((const uint8_t*)addr); }
+  template <> inline uint8x16_t neon_load_si128<true>(const void* addr) { return vld1q_u8((const uint8_t*)addr); }
+
 #endif
 
 

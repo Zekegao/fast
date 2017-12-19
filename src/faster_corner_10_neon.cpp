@@ -7,7 +7,7 @@
 #ifndef __ARM_NEON__
 # error "This file requires NEON support. Check your compoler flags."
 #else
-#include <neon.h>
+#include <arm_neon.h>
 #endif
 
 namespace fast
@@ -36,14 +36,14 @@ namespace fast
 				const fast_byte* p = (fast_byte*)img + y*img_stride + x;
 				uint8x16_t lo, hi;
 				{
-					const  uint8x16_t here = vld1q_u8((uint8_t*)(p));
+					const  uint8x16_t here = neon_load_si128<Aligned>((uint8_t*)(p));
 					uint8x16_t lo = vqsubq_u8(here, barriers);
 					uint8x16_t hi = vqaddq_u8(barriers, here);
 				}
 				unsigned int ans_b, ans_e;
 				{
-					uint8x16_t top = vld1q_u8((uint8_t*)(p - stride));
-					uint8x16_t bottom = vld1q_ut((uint8_t*)(p+stride));
+					uint8x16_t top = neon_load_si128<Aligned>((uint8_t*)(p - stride));
+					uint8x16_t bottom = neon_load_si128<Aligned>((uint8_t*)(p+stride));
 
 					CHECK_BARRIER(lo, hi, top, ans_b);
 					CHECK_BARRIER(lo, hi, bottom, ans_e);
@@ -56,7 +56,7 @@ namespace fast
 					uint8x16_t ul = vld1q_u8((uint8_t*)(p-2-2*w));
 					uint8x16_t lr = vld1q_u8((uint8_t*)(p+2+2*w));
 					CHECK_BARRIER(lo, hi, ul, ans_m);
-					CHECK_BARRIER(lo, hi, lr, ans_q);
+					CHECK_BARRIER(lo, hi, lr, ans_p);
 					possible = (ans_m & ans_b) | (ans_e & ans_p);
 					if (!possible)
 						continue;
@@ -66,6 +66,8 @@ namespace fast
 				{
 					uint8x16_t ll = vld1q_u8((uint8_t*)(p-2 + 2*w));
 					uint8x16_t ur = vld1q_u8((uint8_t*)(p+2 - 2*w));
+					CHECK_BARRIER(lo, hi, ll, ans_o);
+                  	CHECK_BARRIER(lo, hi, ur, ans_n);
 					possible &= ans_o | (ans_b & ans_n);
 					possible &= ans_n | (ans_e & ans_o);
 					if(!possible)
@@ -86,8 +88,8 @@ namespace fast
 
 				unsigned int ans_a, ans_c;
 				{
-					uint8x16_t = vld1q_u8((uint8_t*)(p-1-stride));
-					uint8x16_t = vld1q_u8((uint8_t*)(p+1-stride)); // not same with SSE2, notice it.
+					uint8x16_t a = vld1q_u8((uint8_t*)(p-1-stride));
+					uint8x16_t c = vld1q_u8((uint8_t*)(p+1-stride)); // not same with SSE2, notice it.
 					CHECK_BARRIER(lo, hi, a, ans_a);
 					CHECK_BARRIER(lo, hi, c, ans_c);
 					possible &= ans_a | (ans_e & ans_p);
@@ -171,15 +173,28 @@ namespace fast
                   if(possible & (1<<15))
                     corners.push_back(fast_xy(x +15, y));
               }
-          
-	          for(int x=xend; x < img_width - 3; x++)
-	              if(is_corner_10<Less>(img+y*img_stride+x, img_stride, barrier) || 
-	                 is_corner_10<Greater>(img+y*img_stride+x, img_stride, barrier))
-	                  corners.push_back(fast_xy(x, y));
-			}
-		}
 
+          }
+          
+	      for(int x=xend; x < img_width - 3; x++)
+	          if(is_corner_10<Less>(img+y*img_stride+x, img_stride, barrier) || 
+	             is_corner_10<Greater>(img+y*img_stride+x, img_stride, barrier))
+	               corners.push_back(fast_xy(x, y));	
+		}
 	}
 
+	void fast_corner_detect_10_neon(const fast_byte* img, int img_width, int img_height, int img_stride,
+                                  short barrier, std::vector<fast_xy>& corners)
+  	{
+      if (img_width < 22) {
+          fast_corner_detect_10(img, img_width, img_height, img_stride, barrier, corners);
+          return;
+      } else if (img_width < 22 || img_height < 7)
+          return;
 
+      if (is_aligned<16>(img) && is_aligned<16>(img+img_stride))
+          faster_corner_detect_10<true>(img, img_width, img_height, img_stride, barrier, corners);
+      else
+          faster_corner_detect_10<false>(img, img_width, img_height, img_stride, barrier, corners);
+  	}
 }
